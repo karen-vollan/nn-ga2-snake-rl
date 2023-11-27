@@ -52,7 +52,7 @@ def mean_huber_loss(y_true, y_pred, delta=1):
     loss : Tensor
         average loss across points
     """
-    return torch.mean(huber_loss(y_true, y_pred, delta)).item()
+    return torch.mean(huber_loss(y_true, y_pred, delta))
 
 class Agent():
     """Base class for all agents
@@ -378,12 +378,12 @@ class DeepQLearningAgent(Agent):
 
         class DQN(nn.Module):
             def __init__(self):
-                super(DQN, self).__init__()
+                super().__init__()
                 self.layers = self.build_model()
+
+            def optimizer(self, parameters):
+                return optim.RMSprop(parameters, lr=0.0005) 
                 
-            def optimizer(self, x):
-                return nn.RMSprop(x, lr=0.0005) 
-            
             def loss(self, y_true, y_pred):
                 return mean_huber_loss(y_true, y_pred)
 
@@ -456,19 +456,7 @@ class DeepQLearningAgent(Agent):
                 return self(x)
 
             def train_on_batch(self, y_true, y_pred):
-                mean_loss = self.loss(y_true=y_true, y_pred=y_pred)
-                self.loss.backward()
-                self.optimizer.step()
-                return mean_loss
-                ########
-                # compile the model
-                #loss = mean_huber_loss(input_board, out)
-                #optimizer = nn.RMSprop(out, lr=0.0005) 
-                #loss.backward()
-                #optimizer.step()
-
-                # model = Model(inputs=input_board, outputs=out)
-                #model.compile(optimizer=RMSprop(0.0005), loss=mean_huber_loss)
+                return self.loss(y_true=y_true, y_pred=y_pred)
         return DQN()
                 
         """
@@ -626,8 +614,16 @@ class DeepQLearningAgent(Agent):
         target = (1-a)*target.detach().numpy() + a*discounted_reward
         # fit
         loss = self._model.train_on_batch(self._normalize_board(s), target)
+       
+        #Compile the model
+        loss.requires_grad = True
+        optimizer = self._model.optimizer(self._model.parameters())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
         # loss = round(loss, 5)
-        return loss
+        return loss.item()
 
     def update_target_net(self):
         """Update the weights of the target network, which is kept
