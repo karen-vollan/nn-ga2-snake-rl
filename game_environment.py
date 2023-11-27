@@ -11,7 +11,6 @@ import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 import pickle
-import tensorflow as tf
 
 class Position:
     """Class for defining any position on a 2D grid

@@ -28,7 +28,7 @@ def huber_loss(y_true, y_pred, delta=1):
     loss : Tensor
         loss values for all points
     """
-    error = y_true[:, 0] - y_pred[:,0][:,0][:,0]
+    error = y_true[:,0][:,0][:,0] - y_pred[:, 0]
     error = torch.from_numpy(error)
     quad_error = 0.5*torch.sqrt(error)
     lin_error = delta*(torch.abs(error) - 0.5*delta)
@@ -360,7 +360,7 @@ class DeepQLearningAgent(Agent):
         """
         # use the agent model to make the predictions
         model_outputs = self._get_model_outputs(board, self._model)
-        return np.argmax(np.where(legal_moves==1, model_outputs, -np.inf), axis=1)
+        return np.argmax(np.where(legal_moves==1, model_outputs.detach().numpy(), -np.inf), axis=1)
 
     def _agent_model(self):
         """Returns the model which evaluates Q values for a given state input
@@ -369,13 +369,6 @@ class DeepQLearningAgent(Agent):
         -------
         model : TensorFlow Graph
             DQN model graph
-        """
-        def _agent_model(self):
-        """Returns the model which evaluates Q values for a given state input
-
-        Returns
-        -------
-        model : DQN model graph
         """
 
         version = self._version
@@ -459,8 +452,13 @@ class DeepQLearningAgent(Agent):
             def save_weights(self, file_path):
                 torch.save(self.state_dict(), file_path)
 
+            def predict_on_batch(self, x):
+                return self(x)
+
             def train_on_batch(self, y_true, y_pred):
                 mean_loss = self.loss(y_true=y_true, y_pred=y_pred)
+                self.loss.backward()
+                self.optimizer.step()
                 return mean_loss
                 ########
                 # compile the model
@@ -619,13 +617,13 @@ class DeepQLearningAgent(Agent):
         next_model_outputs = self._get_model_outputs(next_s, current_model)
         # our estimate of expexted future discounted reward
         discounted_reward = r + \
-            (self._gamma * np.max(np.where(legal_moves==1, next_model_outputs, -np.inf), 
+            (self._gamma * np.max(np.where(legal_moves==1, next_model_outputs.detach().numpy(), -np.inf), 
                                   axis = 1)\
                                   .reshape(-1, 1)) * (1-done)
         # create the target variable, only the column with action has different value
         target = self._get_model_outputs(s)
         # we bother only with the difference in reward estimate at the selected action
-        target = (1-a)*target + a*discounted_reward
+        target = (1-a)*target.detach().numpy() + a*discounted_reward
         # fit
         loss = self._model.train_on_batch(self._normalize_board(s), target)
         # loss = round(loss, 5)
