@@ -13,7 +13,7 @@ import time
 from utils import play_game, play_game2
 from game_environment import Snake, SnakeNumpy
 import torch
-from agent import DeepQLearningAgent, mean_huber_loss
+from agent import DeepQLearningAgent
 import json
 
 # some global variables
@@ -32,7 +32,7 @@ with open('model_config/{:s}.json'.format(version), 'r') as f:
     buffer_size = m['buffer_size']
 
 # define no of episodes, logging frequency
-episodes = 2 * (10**5)
+episodes = 6 * (10**5) #2!!
 log_frequency = 500
 games_eval = 8
 

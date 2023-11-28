@@ -12,48 +12,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-def huber_loss(y_true, y_pred, delta=1):
-    """
-    Parameters
-    ----------
-    y_true : Tensor
-        The true values for the regression data
-    y_pred : Tensor
-        The predicted values for the regression data
-    delta : float, optional
-        The cutoff to decide whether to use quadratic or linear loss
-
-    Returns
-    -------
-    loss : Tensor
-        loss values for all points
-    """
-    error = y_true[:,0][:,0][:,0] - y_pred[:, 0]
-    error = torch.from_numpy(error)
-    quad_error = 0.5*torch.sqrt(error)
-    lin_error = delta*(torch.abs(error) - 0.5*delta)
-    # quadratic error, linear error
-    return torch.where(torch.abs(error) < delta, quad_error, lin_error)
-
-def mean_huber_loss(y_true, y_pred, delta=1):
-    """Calculates the mean value of huber loss
-
-    Parameters
-    ----------
-    y_true : Tensor
-        The true values for the regression data
-    y_pred : Tensor
-        The predicted values for the regression data
-    delta : float, optional
-        The cutoff to decide whether to use quadratic or linear loss
-
-    Returns
-    -------
-    loss : Tensor
-        average loss across points
-    """
-    return torch.mean(huber_loss(y_true, y_pred, delta))
-
 class Agent():
     """Base class for all agents
     This class extends to the following classes
@@ -265,8 +223,9 @@ class DeepQLearningAgent(Agent):
     _target_net : TensorFlow Graph
         Stores the target network graph of the DQN model
     """
+    # Changed the gamma from 0.99 to 0.9 for better performance
     def __init__(self, board_size=10, frames=4, buffer_size=10000,
-                 gamma=0.99, n_actions=3, use_target_net=True,
+                 gamma=0.9, n_actions=3, use_target_net=True,
                  version=''):
         """Initializer for DQN agent, arguments are same as Agent class
         except use_target_net is by default True and we call and additional
@@ -275,6 +234,8 @@ class DeepQLearningAgent(Agent):
         Agent.__init__(self, board_size=board_size, frames=frames, buffer_size=buffer_size,
                  gamma=gamma, n_actions=n_actions, use_target_net=use_target_net,
                  version=version)
+
+        self._loss = nn.HuberLoss(reduction="mean")
         self.reset_models()
 
     def reset_models(self):
@@ -384,10 +345,7 @@ class DeepQLearningAgent(Agent):
                 self.layers = self.build_model()
 
             def optimizer(self, parameters):
-                return optim.RMSprop(parameters, lr=0.0005) 
-                
-            def loss(self, y_true, y_pred):
-                return mean_huber_loss(y_true, y_pred)
+                return optim.RMSprop(parameters, lr=0.0005)
 
             def forward(self, input):
                 x = torch.from_numpy(input)
@@ -464,10 +422,6 @@ class DeepQLearningAgent(Agent):
             # This function returns the predict Q-values with help of the build model
             def predict_on_batch(self, x):
                 return self(x)
-            
-            # This function returns the mean loss
-            def train_on_batch(self, y_true, y_pred):
-                return self.loss(y_true=y_true, y_pred=y_pred)
         return DQN()
 
     def set_weights_trainable(self):
@@ -605,8 +559,13 @@ class DeepQLearningAgent(Agent):
         target = self._get_model_outputs(s)
         # we bother only with the difference in reward estimate at the selected action
         target = (1-a)*target.detach().numpy() + a*discounted_reward
+        target = torch.from_numpy(target)
+        # get the output
+        s_norm = self._normalize_board(s)
+        out = self._get_model_outputs(s_norm, current_model).detach().numpy()
+        out = torch.from_numpy(out)
         # fit
-        loss = self._model.train_on_batch(self._normalize_board(s), target)
+        loss = self._loss(out, target)
        
         #Compile the model
         loss.requires_grad = True
@@ -615,8 +574,7 @@ class DeepQLearningAgent(Agent):
         loss.backward()
         optimizer.step()
 
-        # loss = round(loss, 5)
-        return loss.item()
+        return round(loss.item(),5)
 
     def update_target_net(self):
         """Update the weights of the target network, which is kept
