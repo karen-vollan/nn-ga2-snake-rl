@@ -11,7 +11,6 @@ import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 import pickle
-import tensorflow as tf
 
 class Position:
     """Class for defining any position on a 2D grid
@@ -198,7 +197,7 @@ class Snake:
             self._static_board_template[self._board_size-1, :] = self._value['border']
         else:
             # read obstacles boards from file and randomly select one
-            with open('models/{:s}/obstacles_board'.format(self._version), 'rb') as f:
+            with open('models/{:s}/obstacles_board_test_14'.format(self._version), 'rb') as f:
                 self._static_board_template = pickle.load(f)
 
             self._static_board_template = self._static_board_template[\
