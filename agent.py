@@ -367,15 +367,17 @@ class DeepQLearningAgent(Agent):
 
         Returns
         -------
-        model : TensorFlow Graph
+        model : Pytorch DQN graph
             DQN model graph
         """
-
+        # Variables the DQN-model need to access for creating the layers
         version = self._version
         board_size = self._board_size
         n_frames = self._n_frames
         n_actions = self._n_actions
 
+        # Created the DQN model graph with creating an nn.Module Class
+        # The are also added functions that fit the model fits to the rest of the code
         class DQN(nn.Module):
             def __init__(self):
                 super().__init__()
@@ -390,31 +392,32 @@ class DeepQLearningAgent(Agent):
             def forward(self, input):
                 x = torch.from_numpy(input)
                 return self.layers(x)
-
+            
+            # This function creates the layers from based on the version model_config information
             def build_model(self):
-                # define the input layer, shape is dependent on the board size and frames
+                # Get the model layer information from the model_config file
                 with open('model_config/{:s}.json'.format(version), 'r') as f:
                     m = json.loads(f.read())
-
                 layers = m['model']
 
+                # Help variables for creating the model
                 model_layers = []
                 in_channels = board_size
                 out_channels = None
 
-                # build the model
+                # Build the model
                 for layer in layers:
                     l = layers[layer]
                     if('Conv2D' in layer):
-                        # get information from model
+                        # Get information from model
                         out_channels = l['filters']
                         kernel_size = l['kernel_size']
                         activation = l['activation']
 
-                        # add convolutional layer
+                        # Add convolutional layer
                         model_layers.append(nn.Conv2d(in_channels, out_channels, kernel_size, padding=n_frames))
 
-                        # add activation layer
+                        # Add activation layer
                         if activation == 'relu': model_layers.append(nn.ReLU())
                         in_channels = out_channels
 
@@ -424,12 +427,15 @@ class DeepQLearningAgent(Agent):
                     if('Dense' in layer):
                         features = l['units']
                         activation = l['activation']
+                        # In_features for nn.linear is 5376 for version 17.1. 
+                        # It would be better if the in_feature would be calculated in the code, so the code also can work on other versions
                         model_layers.append(nn.Linear(5376, features)) #features
                         if activation == 'relu': model_layers.append(nn.ReLU())
                         in_channels = features
                 model_layers.append(nn.Linear(in_channels, n_actions))
                 return nn.Sequential(*model_layers)
             
+            # This function get the weights from layers that have weight as an attribute
             def get_weights(self):
                 weights = []
                 idx = 0
@@ -439,6 +445,7 @@ class DeepQLearningAgent(Agent):
                     idx += 1
                 return weights
             
+             # This function set the weights to the layers that have weight as an attribute
             def set_weights(self, weights):
                 for weight in weights:
                     idx = weight[0]
@@ -446,36 +453,22 @@ class DeepQLearningAgent(Agent):
                     self.layers[idx].weight = w
                 return weights
             
+            # Load the weights from disk to memory
             def load_weights(self, file_path):
                 self.load_state_dict(torch.load(file_path))
-
+            
+            # Save the weight to disk
             def save_weights(self, file_path):
                 torch.save(self.state_dict(), file_path)
 
+            # This function returns the predict Q-values with help of the build model
             def predict_on_batch(self, x):
                 return self(x)
-
+            
+            # This function returns the mean loss
             def train_on_batch(self, y_true, y_pred):
                 return self.loss(y_true=y_true, y_pred=y_pred)
         return DQN()
-                
-        """
-        input_board = Input((self._board_size, self._board_size, self._n_frames,), name='input')
-        x = Conv2D(16, (3,3), activation='relu', data_format='channels_last')(input_board)
-        x = Conv2D(32, (3,3), activation='relu', data_format='channels_last')(x)
-        x = Conv2D(64, (6,6), activation='relu', data_format='channels_last')(x)
-        x = Flatten()(x)
-        x = Dense(64, activation = 'relu', name='action_prev_dense')(x)
-        # this layer contains the final output values, activation is linear since
-        # the loss used is huber or mse
-        out = Dense(self._n_actions, activation='linear', name='action_values')(x)
-        # compile the model
-        model = Model(inputs=input_board, outputs=out)
-        model.compile(optimizer=RMSprop(0.0005), loss=mean_huber_loss)
-        # model.compile(optimizer=RMSprop(0.0005), loss='mean_squared_error')
-        """
-
-        return model
 
     def set_weights_trainable(self):
         """Set selected layers to non trainable and compile the model"""
