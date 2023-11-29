@@ -3,12 +3,12 @@
 Run the training.py for training the model
 - The results of the training logges in the model_logs folder
 
-For visualization and play with yout trained model, run the game_visualization.py.
+For visualization and play with your trained model, run the game_visualization.py.
 - The results is in the images folder
 
 For changing and adding models:
-- 1. change or create a json file for the spesific version under folder model_config
-- 2. new model? add to model_version.json in the "mail folder"
+- Change or create a json file for the spesific version under folder model_config
+- New model? add to model_version.json in the "mail folder"
 
 # Result from one game
 One game from a trained model (v.17.1)<br>
