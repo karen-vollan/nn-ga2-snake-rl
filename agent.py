@@ -14,10 +14,7 @@ import torch.optim as optim
 
 class Agent():
     """Base class for all agents
-    This class extends to the following classes
-    DeepQLearningAgent
-    HamiltonianCycleAgent
-    BreadthFirstSearchAgent
+    This class extends to the DeepQLearningAgent
 
     Attributes
     ----------
@@ -212,9 +209,6 @@ class Agent():
 class DeepQLearningAgent(Agent):
     """This agent learns the game via Q learning
     model outputs everywhere refers to Q values
-    This class extends to the following classes
-    PolicyGradientAgent
-    AdvantageActorCriticAgent
 
     Attributes
     ----------
@@ -223,9 +217,8 @@ class DeepQLearningAgent(Agent):
     _target_net : TensorFlow Graph
         Stores the target network graph of the DQN model
     """
-    # Changed the gamma from 0.99 to 0.9 for better performance
     def __init__(self, board_size=10, frames=4, buffer_size=10000,
-                 gamma=0.9, n_actions=3, use_target_net=True,
+                 gamma=0.99, n_actions=3, use_target_net=True,
                  version=''):
         """Initializer for DQN agent, arguments are same as Agent class
         except use_target_net is by default True and we call and additional
@@ -235,6 +228,7 @@ class DeepQLearningAgent(Agent):
                  gamma=gamma, n_actions=n_actions, use_target_net=use_target_net,
                  version=version)
 
+        # The model loss function - Huber Loss
         self._loss = nn.HuberLoss(reduction="mean")
         self.reset_models()
 
@@ -284,7 +278,7 @@ class DeepQLearningAgent(Agent):
         # the default model to use
         if model is None:
             model = self._model
-        model_outputs = model.predict_on_batch(board)
+        model_outputs = model(board)
         return model_outputs
 
     def _normalize_board(self, board):
@@ -300,9 +294,7 @@ class DeepQLearningAgent(Agent):
         board : Numpy array
             The copy of board state after normalization
         """
-        # return board.copy()
-        # return((board/128.0 - 1).copy())
-        return board.astype(np.float32)/4.0
+        return (board.astype(np.float32)/4.0).copy()
 
     def move(self, board, legal_moves, value=None):
         """Get the action with maximum Q value
@@ -337,8 +329,8 @@ class DeepQLearningAgent(Agent):
         n_frames = self._n_frames
         n_actions = self._n_actions
 
-        # Created the DQN model graph with creating an nn.Module Class
-        # The are also added functions that fit the model fits to the rest of the code
+        # Creates the DQN model graph with help of nn.Module Class
+        # The are also added functions that fit the model to the rest of the code
         class DQN(nn.Module):
             def __init__(self):
                 super().__init__()
@@ -383,6 +375,7 @@ class DeepQLearningAgent(Agent):
                         model_layers.append(nn.Flatten())
 
                     if('Dense' in layer):
+                        # Get information from model
                         features = l['units']
                         activation = l['activation']
                         # In_features for nn.linear is 5376 for version 17.1. 
@@ -418,22 +411,7 @@ class DeepQLearningAgent(Agent):
             # Save the weight to disk
             def save_weights(self, file_path):
                 torch.save(self.state_dict(), file_path)
-
-            # This function returns the predict Q-values with help of the build model
-            def predict_on_batch(self, x):
-                return self(x)
         return DQN()
-
-    def set_weights_trainable(self):
-        """Set selected layers to non trainable and compile the model"""
-        for layer in self._model.layers:
-            layer.trainable = False
-        # the last dense layers should be trainable
-        for s in ['action_prev_dense', 'action_values']:
-            self._model.get_layer(s).trainable = True
-        self._model.compile(optimizer = self._model.optimizer, 
-                            loss = self._model.loss)
-
 
     def get_action_proba(self, board, values=None):
         """Returns the action probability values using the DQN model
@@ -460,10 +438,7 @@ class DeepQLearningAgent(Agent):
         return model_outputs
 
     def save_model(self, file_path='', iteration=None):
-        """Save the current models to disk using tensorflow's
-        inbuilt save model function (saves in h5 format)
-        saving weights instead of model as cannot load compiled
-        model with any kind of custom object (loss or metric)
+        """Save the current models to disk with help of functions from DQN-class (the model)
         
         Parameters
         ----------
@@ -482,8 +457,8 @@ class DeepQLearningAgent(Agent):
 
     def load_model(self, file_path='', iteration=None):
         """ load any existing models, if available """
-        """Load models from disk using tensorflow's
-        inbuilt load model function (model saved in h5 format)
+        """Load models from disk using with help of functions from DQN-class (the model)
+        (model saved in h5 format)
         
         Parameters
         ----------
@@ -560,20 +535,18 @@ class DeepQLearningAgent(Agent):
         # we bother only with the difference in reward estimate at the selected action
         target = (1-a)*target.detach().numpy() + a*discounted_reward
         target = torch.from_numpy(target)
-        # get the output
-        s_norm = self._normalize_board(s)
-        out = self._get_model_outputs(s_norm, current_model).detach().numpy()
+        # Get the output
+        out = self._get_model_outputs(s, current_model).detach().numpy()
         out = torch.from_numpy(out)
-        # fit
+        # Compute the loss (Huber loss)
         loss = self._loss(out, target)
        
-        #Compile the model
+        # Optimize the model
         loss.requires_grad = True
         optimizer = self._model.optimizer(self._model.parameters())
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
         return round(loss.item(),5)
 
     def update_target_net(self):
@@ -583,22 +556,3 @@ class DeepQLearningAgent(Agent):
         """
         if(self._use_target_net):
             self._target_net.set_weights(self._model.get_weights())
-
-    def compare_weights(self):
-        """Simple utility function to heck if the model and target 
-        network have the same weights or not
-        """
-        for i in range(len(self._model.layers)):
-            for j in range(len(self._model.layers[i].weights)):
-                c = (self._model.layers[i].weights[j].numpy() == \
-                     self._target_net.layers[i].weights[j].numpy()).all()
-                print('Layer {:d} Weights {:d} Match : {:d}'.format(i, j, int(c)))
-
-    def copy_weights_from_agent(self, agent_for_copy):
-        """Update weights between competing agents which can be used
-        in parallel training
-        """
-        assert isinstance(agent_for_copy, self), "Agent type is required for copy"
-
-        self._model.set_weights(agent_for_copy._model.get_weights())
-        self._target_net.set_weights(agent_for_copy._model_pred.get_weights())
