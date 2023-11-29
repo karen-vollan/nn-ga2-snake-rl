@@ -8,7 +8,7 @@ For visualization and play with your trained model, run the game_visualization.p
 
 For changing and adding models:
 - Change or create a json file for the spesific version under folder model_config
-- New model? add to model_version.json in the "mail folder"
+- New model? add to model_version.json in the "main folder"
 
 # Result from one game
 One game from a trained model (v.17.1)<br>
