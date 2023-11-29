@@ -212,9 +212,9 @@ class DeepQLearningAgent(Agent):
 
     Attributes
     ----------
-    _model : TensorFlow Graph
+    _model : Pytorch Graph
         Stores the graph of the DQN model
-    _target_net : TensorFlow Graph
+    _target_net : Pytorch Graph
         Stores the target network graph of the DQN model
     """
     def __init__(self, board_size=10, frames=4, buffer_size=10000,
@@ -264,7 +264,7 @@ class DeepQLearningAgent(Agent):
         ----------
         board : Numpy array
             The board state for which to predict action values
-        model : TensorFlow Graph, optional
+        model : Pytorch Graph, optional
             The graph to use for prediction, model or target network
 
         Returns
@@ -540,7 +540,8 @@ class DeepQLearningAgent(Agent):
         out = torch.from_numpy(out)
         # Compute the loss (Huber loss)
         loss = self._loss(out, target)
-       
+
+        before = self._model.get_weights()
         # Optimize the model
         loss.requires_grad = True
         optimizer = self._model.optimizer(self._model.parameters())
