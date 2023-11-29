@@ -1,2 +1,2 @@
 iteration,reward_mean,length_mean,games,loss
-500,-0.75,2.25,8,0.03663
+500,-1.0,2.0,10,0.03454
