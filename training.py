@@ -56,23 +56,17 @@ if(agent_type in ['DeepQLearningAgent']):
 # use only for DeepQLearningAgent
 if(agent_type in ['DeepQLearningAgent']):
     # play some games initially to fill the buffer
-    # or load from an existing buffer (supervised)
-    if(supervised):
-        try:
-            agent.load_buffer(file_path='models/{:s}'.format(version), iteration=1)
-        except FileNotFoundError:
-            pass
-    else:
-        # setup the environment
-        games = 512
-        env = SnakeNumpy(board_size=board_size, frames=frames, 
-                    max_time_limit=max_time_limit, games=games,
-                    frame_mode=True, obstacles=obstacles, version=version)
-        ct = time.time()
-        _ = play_game2(env, agent, n_actions, n_games=games, record=True,
-                       epsilon=epsilon, verbose=True, reset_seed=False,
-                       frame_mode=True, total_frames=games*64)
-        print('Playing {:d} frames took {:.2f}s'.format(games*64, time.time()-ct))
+
+    # setup the environment
+    games = 512
+    env = SnakeNumpy(board_size=board_size, frames=frames, 
+                max_time_limit=max_time_limit, games=games,
+                frame_mode=True, obstacles=obstacles, version=version)
+    ct = time.time()
+    _ = play_game2(env, agent, n_actions, n_games=games, record=True,
+                   epsilon=epsilon, verbose=True, reset_seed=False,
+                   frame_mode=True, total_frames=games*64)
+    print('Playing {:d} frames took {:.2f}s'.format(games*64, time.time()-ct))
 
 env = SnakeNumpy(board_size=board_size, frames=frames, 
             max_time_limit=max_time_limit, games=n_games_training,
@@ -82,6 +76,7 @@ env2 = SnakeNumpy(board_size=board_size, frames=frames,
             frame_mode=True, obstacles=obstacles, version=version)
 
 # training loop
+agent._model.train(True)
 model_logs = {'iteration':[], 'reward_mean':[],
               'length_mean':[], 'games':[], 'loss':[]}
 for index in tqdm(range(episodes)):

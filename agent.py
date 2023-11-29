@@ -1,5 +1,17 @@
 # sources and support:
-# - MAO3
+# - My older assignments in this course and the course DTE-2501
+# - Canvas lectures
+# - https://l.facebook.com/l.php?u=https%3A%2F%2Fdiscuss.pytorch.org%2Ft%2Faccess-weights-of-a-specific-module-in-nn-sequential%2F3627%3Ffbclid%3DIwAR18rUCYEoRW8P30NvcqLs3mPc1nwPzHa28VEXwc9hQHDhQvXEEFQoou_hs&h=AT1Vvf86aRY0TtqnfMRXcFxaP8Hb2RiFEWXs3dobEr4Rl87F3KQoweJ8OQe8tcHlHQiMTUn6o-CrtLs-1KKtOZZ8dCUu4hEFRZGhfENorDmi3oIjtdSEr5feqOpNNGda1Bnjiw
+# - https://pytorch.org/tutorials/beginner/basics/saveloadrun_tutorial.html
+# - https://www.tutorialspoint.com/how-to-convert-a-numpy-ndarray-to-a-pytorch-tensor-and-vice-versa
+# - https://stackoverflow.com/questions/58307036/is-there-really-no-padding-same-option-for-pytorchs-conv2d
+# - https://stackoverflow.com/questions/62699306/runtime-error-element-0-of-tensors-does-not-require-grad-and-does-not-have-a-g
+# - https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+# - https://pytorch.org/docs/stable/generated/torch.manual_seed.html
+# - https://pytorch.org/docs/stable/index.html
+# - https://www.tensorflow.org/api_docs
+# - https://chat.openai.com/ (used for giving small examples, troubleshooting and "fast" results on question (I controlled the answer I got with other sources and did not copy code))
+
 
 from replay_buffer import ReplayBuffer, ReplayBufferNumpy
 import numpy as np
@@ -541,7 +553,6 @@ class DeepQLearningAgent(Agent):
         # Compute the loss (Huber loss)
         loss = self._loss(out, target)
 
-        before = self._model.get_weights()
         # Optimize the model
         loss.requires_grad = True
         optimizer = self._model.optimizer(self._model.parameters())
